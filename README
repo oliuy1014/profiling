@@ -1,0 +1,195 @@
+README for .um
+
+************************************AUTHORS***********************************
+Kabir Pamnani (kpamna01) Oliver Uy (ouy01)
+
+*******************************ACKNOWLEDGEMENTS*******************************
+Thanks so much to all the TA's!
+
+*****************************CORRECTLY IMPLEMENTED****************************
+We believe we have correctly implemented all parts of the UM.
+
+*********************************ARCHITECTURE*********************************
+Our UM uses three modules: the main driver, Decode module, and Execute module.
+The main driver (Main) initializes the virtual memory, registers, and program
+counter, then iterates through the provided instructions and uses functions
+from Decode and Execute to run each instruction. Decode has no knowledge of
+anything except the 32-bit words it receives from Main, returning structs
+with the extracted Opcodes, registers, and/or values from the words it
+receives. Execute functions have no knowledge of the actual 32-bit words
+that make up the provided instructions. Main takes the decimal values of the
+fields (extracted by Decode) and passes them into Execute. All Execute
+functions have knowledge of the registers and/or virtual memory in Main
+(except Halt), as they need to modify the values stored in those structures.
+
+***********************DEPARTURES FROM ORIGINAL DESIGN***********************
+1. No "Mapped" Hanson Set_T:
+Instead of using a Set_T to store mapped identifiers, we set the pointers from
+unmapped segments within the virtual memory Seq_T to NULL after freeing the
+UArray_T they point to. Instead of checking that a segment identifier is in
+the set of mapped identifiers, we assert that the pointer within the virtual
+memory Seq_T does not point to NULL. Basically, a function accessing
+memory[x][y] first asserts that memory[x] does not point to NULL.
+first asserts that m[x] does not point to NULL.
+
+2. uint32_t[] registers instead of UArray_T registers:
+Instead of a UArray_T, registers is a non-Hanson C array of uint32_t's.
+
+**********************TIME TO RUN 50 MILLION INSTRUCTIONS**********************
+Result: 7.34 seconds
+We found the time taken to run 50 million instructions by starting a CPU_Timer
+just before the first instruction is ran, and having a counter keep track of
+the number of instructions executed, then stopping the CPU_Time timer when the
+counter hits 50000000. We ran this 10 times and took the average of the timer
+outputs (divided by one billion to account for the nanosecond to second
+conversion). This gave us 7.34 seconds.
+
+*********************************UM UNIT TESTS*********************************
+****halt.um: 
+Tests functionality of halt by making sure that the program exits.
+
+****halt-verbose.um: 
+Tests Halt by calling Halt and then Loadval and Output, successful test has
+no output, signifying a successful halt.
+
+****print-six.um:
+Tests Output by calling Loadval to load the value 54 into r1, and calling 
+Output on r1. Successful test prints the corresponding ASCII character 
+for 54 = '6'.
+
+****1char_input.um:
+Tests Input by calling Input and Output on the same register, then we
+manually check that the input char was the same as what was printed.
+
+****loadval.um:
+Tests load value by loading the value 117 into r1, and calling output on r1.
+Diff-ing the output of our um and the reference and manually checking the
+output to ensure the corresponding ASCII value ('u') is printed.
+
+****add.um:
+Calls Input on "L" and calls loadval on 1. Then calls Add on those registers
+and output on the result.The output is correct if it prints "M", 1 greater
+than the value for L.
+
+****multiply.um: 
+Calls Loadval twice, storing two values, 10 and 10, and then calls multiply on 
+those registers, then output on the register that stores the product. We ensure 
+that the output displays the correct ASCII value: 'd' for the sum 10 * 10 = 100.
+
+****divide.um:
+Calls Loadval three times, storing 132, 2, and 134. Calls divide and output
+first on the registers storing 132 and 2, then 134 and 2. A successful test
+prints 'B' and 'C':
+ASCII corresponds to: 132 / 2 == 66 == 'B' and 134 / 2 == 67 == 'C'
+
+****mult-div.um: 
+Tests that both multiply and divide act as expected when called together. In 
+this case the test calls input on 'z' and loadval on 2 into registers
+1 and 2, and then calls divide to store the result in r1. It then calls 
+multiply on the value in r3 (which should be 122/2 = 61) and r2 which still 
+has the value 2 and hold the product in r3. A successful call of Output on r3
+followed by Output on r1 should print "z=" because r3 should contain the
+ASCII of ('z' / 2) * 2 == 'z', and r1 should contain 'z' / 2 == 61 == '='.
+
+****cmov.um: 
+Calls four Loadvals, storing 107, 97, 0, and 1 in four registers. The first
+call to Cmov uses the register with 1 as the condition and moves 107 into r1
+which is then passed to Output, printing 'k'. The second Cmov uses the 0 as
+the condition, trying to move 97 into r1. The second Output is called on r1
+and should print the ASCII value associated with 107 again ('k') rather
+than replacing it with 97 because the second Cmov should not move 97.
+
+****nand.um:
+Uses consecutive loadvals and multiply's and add's to put the decimal values
+that correspond to 0xffffffff and 0xffffffbd into two registers. Nands them
+and passes the result to Output, expecting the ASCII corresponding to
+0x00000042, which is 'B'.
+
+***map.um:
+Tests map by ensuring that there is no CRE when mapping a new segment.
+Test map by mapping segment 1 with a size of 3 words. No CRE when test 
+is run shows that map is successfully mapping a new segment in memory.
+More tests are done below that involve map to see if words can be stored
+and retrieved from mapped segments.
+
+****segload.um:
+Tests segload by ensuring there is no CRE when segload-ing from mem[0].
+Simply loads two values: 0, 1 into r1, r2 and segloads
+the word at mem[0][1] into register 3.
+
+****segstore.um:
+Tests segstore by ensuring there is no CRE when segstore-ing into mem[0].
+Simply loads three values: 0, 1, and 58 into r1, r2, r3, and segstores
+58 into mem[0][1].
+
+****initial_memory.um:
+The purpose of this test was to check that the functionality of the 
+instructions Map, Segload and Segstore are working correctly. Although these
+were implemented incrementally, in order to test whether they are working
+as expected we tested them together so that we could output an expected
+result. In this test we first mapped a segment r1 of size r2 (4 words).
+The test then calls Segstore to store the character 'B' in the second
+position in the second slot in the newly mapped segment r1. This tests
+that map is working as expected because if we got a CRE when trying to 
+store a word in this mapped segment, that would show that the map 
+instruction was not functional. Finally, we then called Segload 
+to retrieve the character we just stored ('B') from the same position in 
+the segment. We then called output to see that the result was the same 
+as what we stored in the segment. A successful test had no CRE's and 
+displayed the character 'B' in the output file.
+
+****unmap_success.um:
+In this test we mapped a segment r1 of size 3 words, unmapped that segment,
+and then remapped the same segment. Now when trying to call segload from 
+a previously unmapped segment that has been remapped, we expected our test
+to pass without any CRE.  
+
+****long_memory_1.um:
+This is a longer, more comprehensive test of all of Map, segstore and 
+segload. Our test first maps a segment of 4 words, and then 
+stores the characters 'D', 'a', 'M', '!' into each of the positions in the 
+segment using segstore. The test then loops through the 4 words in that 
+segment, calling segload on each word to retrieve each character and load 
+the result into a register. The test than outputs each character in the 
+register in the same loop. The expected output is "DaM!", and this is what
+was printed when we ran this test.
+
+****long_memory_2.um:
+Tests all memory functions Map, Unmap, Segstore and Segload, as well as the
+function of Halt, which is expected to free all remaining virtual memory.
+
+First maps a segment of 13 words to r2, then in a loop, populates the segment
+with the 13 ASCII values for 'a' through 'm' with segstore. In another loop,
+segloads all 13 words from r2's segment and outputs each char.
+
+A third loop maps and immediately unmaps 1000 segments of size 0 to 999.
+
+A final set of loops repeats the initial two loops, mapping another segment of
+size 13, segstore-ing values 'n' through 'z' and printing them in a final loop
+of segloads and outputs. A Halt at the end should free all remaining memory
+and the resulting output should have all chars 'a' through 'z' in order.
+
+****loadprogprint.um:
+Tests Load_program by first mapping a segment of 3 words, and storing the id
+in r1. Then, using several loadvals, multiply's and add's, we get the 32-bit
+words corresponding to Loadval(r7, 66), Output(r7), and Halt(). Each of these
+is put into the mapped segment in the aforementioned order with three calls
+to seg_store. Then Load_program is called on r1, and we check that 'B' is
+printed in the corresponding output file. This is because the program that was
+loaded is expected to then run Loadval(r7, 66), Output(r7), and Halt(),
+printing ASCII 66 == 'B'.
+
+****loadprognoprint.um:
+Tests Load_program by first mapping a segment of 3 words, and storing the id
+in r1. Then, using several loadvals, multiply's and add's, we get the 32-bit
+words corresponding to Loadval(r7, 66), Output(r7), and Halt(). Each of these
+is put into the mapped segment in the opposite order (Halt goes first) with
+three calls to seg_store. Then Load_program is called on r1, and we check that
+nothing is printed in the corresponding output file. This is because the
+program that was loaded is expected to then run Halt() first, never getting to
+the calls to Loadval(r7, 66) or Output(r7).
+
+*****************************HOURS SPENT ON THE UM*****************************
+- Analysis: 5 hours
+- Design: 10 hours
+- Coding: 30 hours
