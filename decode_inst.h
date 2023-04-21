@@ -18,4 +18,3 @@
 
 inst_3reg_t decode_3reg_inst(uint32_t inst);
 inst_loadval_t decode_loadval_inst(uint32_t inst);
-bool is_loadval(uint32_t inst);

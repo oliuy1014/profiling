@@ -352,7 +352,7 @@ void Halt(mem_struct mem)
  *      Will CRE if:
  *      - Memory cannot be allocated for new UArray_T segment being mapped
  *      - mem or r are NULL
- *      - A, B or C are out of range 0-7
+ *      - A, B or C are out of  range 0-7
  ****************************************************************************/
 void Map(uint32_t B, uint32_t C, mem_struct mem, uint32_t r[])
 {

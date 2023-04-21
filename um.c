@@ -42,7 +42,10 @@ unsigned get_m0_size(Seq_T mem_seq);
 int main(int argc, char*argv[])
 {
         // CPUTime_T timer = CPUTime_New();
-        assert(argc == 2);
+        if (argc != 2) {
+                printf("Usage: ./um filename.um\n");
+                exit(1);
+        }
 
         /* open input file and get number of 32-bit words */
         FILE *um_fp = open_file(argv[1], "r");
@@ -69,11 +72,11 @@ int main(int argc, char*argv[])
         while (*prog_counter < get_m0_size(mem->mem_seq)) {
                 UArray_T seg_0 = (UArray_T) Seq_get(mem->mem_seq, 0);
                 uint32_t inst = *(uint32_t *) UArray_at(seg_0, *prog_counter);
-                if (is_loadval(inst)) {
+                if (inst >> 28 == 13) {
                         inst_loadval_t inst_LV = decode_loadval_inst(inst);
                         uint32_t reg_idx = inst_LV.A;
                         uint32_t val = inst_LV.val;
-                        Load_val(reg_idx, val, registers);
+                        registers[reg_idx] = val;
                         (*prog_counter)++;
                 } else {
                         inst_3reg_t inst_3R = decode_3reg_inst(inst);
@@ -88,7 +91,6 @@ int main(int argc, char*argv[])
                 }
         }
         // double time_used = CPUTime_Stop(timer);
-        printf("time: %f\n", time_used);
         return 0;
 }
 

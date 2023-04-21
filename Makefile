@@ -3,7 +3,7 @@
 # Includes build rules for um
 ############## Variables ###############
 
-CC = gcc # The compiler being used
+CC = gcc -O2 # The compiler being used
 
 # Updating include path to use Comp 40 .h files and CII interfaces
 IFLAGS = -I/comp/40/build/include -I/usr/sup/cii40/include/cii
@@ -28,7 +28,7 @@ LDFLAGS = -g -L/comp/40/build/lib -L/usr/sup/cii40/lib64
 # All programs cii40 (Hanson binaries) and *may* need -lm (math)
 # 40locality is a catch-all for this assignment, netpbm is needed for pnm
 # rt is for the "real time" timing library, which contains the clock support
-LDLIBS = -l40locality -larith40 -lcii40 -lm -lrt -lpnm
+LDLIBS = -lcii40-O2 -l40locality -larith40 -lcii40 -lm -lrt -lpnm
 
 # Collect all .h files in your directory.
 # This way, you can never forget to add
@@ -53,7 +53,7 @@ all: um
 
 ## Linking step (.o -> executable program)
 
-um: um.o bitpack.o execute_inst.o decode_inst.o cputiming.o
+um: um.o bitpack.o execute_inst.o decode_inst.o
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 clean:
