@@ -69,16 +69,23 @@ int main(int argc, char*argv[])
         populate_program(mem, um_fp, num_words);
         // CPUTime_Start(timer);
         /* iterate through m[0], decode and execute each instruction */
-        while (*prog_counter < get_m0_size(mem->mem_seq)) {
-                UArray_T seg_0 = (UArray_T) Seq_get(mem->mem_seq, 0);
-                uint32_t inst = *(uint32_t *) UArray_at(seg_0, *prog_counter);
+        // fprintf(stderr, "m_0 size: %u\n", ((uint32_t *)Seq_get(mem->mem_seq, 0))[0]);
+        while (*prog_counter < ((uint32_t *)Seq_get(mem->mem_seq, 0))[0]) {
+                uint32_t *seg_0 = (uint32_t *) Seq_get(mem->mem_seq, 0);
+                // for (int i = 0; i < num_words; i++) {
+                //         fprintf(stderr, "%u\n",( (uint32_t *)Seq_get(mem->mem_seq, 0))[i]);
+                // }
+                uint32_t inst = seg_0[*prog_counter + 1];
                 if (inst >> 28 == 13) {
+                        // fprintf(stderr, "loadingval at loop: %d\n", *prog_counter);
                         inst_loadval_t inst_LV = decode_loadval_inst(inst);
                         uint32_t reg_idx = inst_LV.A;
                         uint32_t val = inst_LV.val;
+                        // fprintf(stderr, "reg_idx: %d val: %d\n", reg_idx, val);
                         registers[reg_idx] = val;
                         (*prog_counter)++;
                 } else {
+                        // fprintf(stderr, "3reg at loop: %d\n", *prog_counter);
                         inst_3reg_t inst_3R = decode_3reg_inst(inst);
                         uint32_t A  = inst_3R.A;
                         uint32_t B  = inst_3R.B;
@@ -87,6 +94,7 @@ int main(int argc, char*argv[])
                         if (OP != 13) {
                                 (*prog_counter)++;
                         }
+                        // fprintf(stderr, "executing at loop: %d\n", *prog_counter);
                         execute(A, B, C, OP, mem, registers, prog_counter);
                 }
         }
@@ -147,7 +155,10 @@ void populate_program(mem_struct mem, FILE *um_fp, long num_words)
         assert(um_fp != NULL);
         
         int curr_byte = fgetc(um_fp);
-        UArray_T m_0 = UArray_new(num_words, sizeof(uint32_t));
+        // ptr = (cast-type*)calloc(n, element-size);
+        uint32_t *m_0 = malloc((num_words + 1) * sizeof(uint32_t));
+        m_0[0] = num_words;
+        assert(m_0 != NULL);
         int word_idx = 0;
         while (curr_byte != EOF) {
                 uint32_t curr_word = 0;             
@@ -157,7 +168,7 @@ void populate_program(mem_struct mem, FILE *um_fp, long num_words)
                                                  curr_byte);
                         curr_byte = fgetc(um_fp);
                 }
-                *(uint32_t *) UArray_at(m_0, word_idx) = curr_word;
+                m_0[word_idx + 1] = curr_word;
                 word_idx++;
         }
         Seq_addhi(mem->mem_seq, m_0);
@@ -182,21 +193,4 @@ long get_file_words(char *filename)
         struct stat file_stats;
         assert(stat(filename, &file_stats) == 0);
         return (file_stats.st_size / BYTES_PER_WORD);
-}
-
-/**********get_file_words****************************************************
- *
- * Purpose: Calculates the number of 32-bit words in segment 0 of mem 
- * Parameters:
- *      Seq_T mem_seq: pointer to virtual memory Seq_T 
- * Returns: Number of 32-bit words in file
- * Expects:
- *      mem_seq to be non-NULL and contain UArray_T's
- * Notes:
- *      Will CRE if mem_seq is NULL or does not contain UArray_T's
- ****************************************************************************/
-unsigned get_m0_size(Seq_T mem_seq)
-{
-        assert(mem_seq != NULL);
-        return (unsigned) UArray_length((UArray_T)Seq_get(mem_seq, 0));
 }

@@ -16,6 +16,7 @@
 #include "execute_inst.h"
 #include "structs_and_constants.h"
 #include <assert.h>
+#include <string.h>
 
 /**********execute********************************************************
  *
@@ -156,9 +157,9 @@ void Seg_load(uint32_t A, uint32_t B, uint32_t C,
         assert(C < NUM_REG);
         assert(r != NULL);
         assert(mem != NULL);
-        assert((UArray_T) Seq_get(mem->mem_seq, r[B]) != NULL);
-        UArray_T seg = (UArray_T) Seq_get(mem->mem_seq, r[B]);
-        r[A] = *(uint32_t *) UArray_at(seg, r[C]);
+        assert((uint32_t *) Seq_get(mem->mem_seq, r[B]) != NULL);
+        uint32_t *seg = (uint32_t *) Seq_get(mem->mem_seq, r[B]);
+        r[A] = seg[r[C] + 1];
 }
 
 /**********Seg_store********************************************************
@@ -192,9 +193,9 @@ void Seg_store(uint32_t A, uint32_t B, uint32_t C,
         assert(C < NUM_REG);
         assert(r != NULL);
         assert(mem != NULL);
-        assert((UArray_T) Seq_get(mem->mem_seq, r[A]) != NULL);
-        UArray_T seg = (UArray_T) Seq_get(mem->mem_seq, r[A]);
-        *(uint32_t *) UArray_at(seg, r[B]) = r[C];
+        assert((uint32_t*) Seq_get(mem->mem_seq, r[A]) != NULL);
+        uint32_t *seg = (uint32_t *) Seq_get(mem->mem_seq, r[A]);
+        seg[r[B] + 1] = r[C];
 }
 
 /**********Add********************************************************
@@ -322,9 +323,9 @@ void Halt(mem_struct mem)
         assert(mem != NULL);
 
         for (int seg = 0; seg < Seq_length(mem->mem_seq); seg++) {
-                UArray_T curr_seg = (UArray_T) Seq_get(mem->mem_seq, seg);
+                uint32_t *curr_seg = (uint32_t *) Seq_get(mem->mem_seq, seg);
                 if (curr_seg != NULL) {
-                        UArray_free(&curr_seg);
+                        free(curr_seg);
                 }
         }
         Seq_free(&(mem->mem_seq));
@@ -361,10 +362,11 @@ void Map(uint32_t B, uint32_t C, mem_struct mem, uint32_t r[])
         assert(r != NULL);
         assert(mem != NULL);
         
-        UArray_T new_seg = UArray_new(r[C], sizeof(uint32_t));
-        for (unsigned i = 0; i < r[C]; i++) {
-                *(uint32_t *) UArray_at(new_seg, i) = 0;
-        }
+        uint32_t *new_seg = calloc(((size_t) r[C]) + 1, sizeof(uint32_t));
+        new_seg[0] = r[C];
+        // for (unsigned i = 0; i < r[C]; i++) {
+        //         *(uint32_t *) UArray_at(new_seg, i) = 0;
+        // }
         if (Seq_length(mem->unmapped) != 0) {
                 uint32_t unmapped_id = *(uint32_t *) Seq_remhi(mem->unmapped);
                 Seq_put(mem->mem_seq, unmapped_id, new_seg);
@@ -402,8 +404,8 @@ void Unmap(uint32_t C, mem_struct mem, uint32_t r[])
         assert(mem != NULL);
 
         /* free segment being unmapped */
-        UArray_T seg = (UArray_T) Seq_get(mem->mem_seq, r[C]);
-        UArray_free(&seg);
+        uint32_t *seg = (uint32_t *) Seq_get(mem->mem_seq, r[C]);
+        free(seg);
 
         /* set pointer in mem_struct to NULL and add id to unmapped sequence */
         Seq_put(mem->mem_seq, r[C], NULL);
@@ -511,7 +513,7 @@ void Load_prog(uint32_t B, uint32_t C, mem_struct mem, uint32_t r[],
         assert(mem != NULL);
         assert(r != NULL);
         assert(prog_counter != NULL);
-        assert((UArray_T) Seq_get(mem->mem_seq, r[B]) != NULL);
+        assert((uint32_t *) Seq_get(mem->mem_seq, r[B]) != NULL);
 
         *prog_counter = r[C];
         
@@ -523,10 +525,12 @@ void Load_prog(uint32_t B, uint32_t C, mem_struct mem, uint32_t r[],
         /* otherwise, copy segment from r[B] into mem[0] and free the 
          * previous contents of m[0]
          */
-        UArray_T old_prog = (UArray_T) Seq_get(mem->mem_seq, 0);
-        UArray_T prog_seg = (UArray_T) Seq_get(mem->mem_seq, r[B]);
-        UArray_T prog_copy = UArray_copy(prog_seg, UArray_length(prog_seg));
-        UArray_free(&old_prog);
+        uint32_t *old_prog = (uint32_t *) Seq_get(mem->mem_seq, 0);
+        uint32_t *prog_seg = (uint32_t *) Seq_get(mem->mem_seq, r[B]);
+        size_t prog_bytes = (prog_seg[0] + 1) * 4;
+        uint32_t *prog_copy = malloc(prog_bytes);
+        memcpy(prog_copy, prog_seg, prog_bytes);
+        free(old_prog);
         Seq_put(mem->mem_seq, 0, prog_copy);
 }
 

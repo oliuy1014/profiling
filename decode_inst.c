@@ -64,6 +64,7 @@ inst_3reg_t decode_3reg_inst(uint32_t inst)
  ****************************************************************************/
 inst_loadval_t decode_loadval_inst(uint32_t inst)
 {
+        // fprintf(stderr, "inside decode lv\n");
         inst_loadval_t decoded;
         decoded.A = (inst << 4) >> 29;
         decoded.val = (inst << 7) >> 7;

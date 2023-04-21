@@ -44,9 +44,9 @@ typedef struct load_val_instruction {
 
 typedef struct memory {
         Seq_T mem_seq;
-        // Set_T mapped;
         Seq_T unmapped;
 } *mem_struct;
+
 
 /**********global macros ****************************************************/
 #define OP_W 4
