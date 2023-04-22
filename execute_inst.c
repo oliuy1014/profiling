@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include "execute_inst.h"
 #include "structs_and_constants.h"
-#include <assert.h>
+// #include <assert.h>
 #include <string.h>
 
 /**********execute********************************************************
@@ -42,12 +42,12 @@
 void execute(uint32_t A, uint32_t B, uint32_t C, uint32_t OP,
              mem_struct mem, uint32_t r[], uint32_t *prog_counter)
 {
-        assert(r != NULL);
-        assert(prog_counter != NULL);
-        assert(mem != NULL);
-        assert(A < NUM_REG);
-        assert(B < NUM_REG);
-        assert(C < NUM_REG);
+        // assert(r != NULL);
+        // assert(prog_counter != NULL);
+        // assert(mem != NULL);
+        // assert(A < NUM_REG);
+        // assert(B < NUM_REG);
+        // assert(C < NUM_REG);
         switch (OP) {
                 case 0:
                         Cmov(A, B, C, r);
@@ -89,7 +89,7 @@ void execute(uint32_t A, uint32_t B, uint32_t C, uint32_t OP,
                         Load_prog(B, C, mem, r, prog_counter);
                         break;
                 default:
-                        assert(OP <= 12);
+                        // assert(OP <= 12);
                         break;
         }
 }
@@ -117,10 +117,10 @@ void execute(uint32_t A, uint32_t B, uint32_t C, uint32_t OP,
  ****************************************************************************/
 void Cmov(uint32_t A, uint32_t B, uint32_t C, uint32_t r[])
 {
-        assert(A < NUM_REG);
-        assert(B < NUM_REG);
-        assert(C < NUM_REG);
-        assert(r != NULL);
+        // assert(A < NUM_REG);
+        // assert(B < NUM_REG);
+        // assert(C < NUM_REG);
+        // assert(r != NULL);
         if (r[C] != 0) {
                 r[A] = r[B];
         }
@@ -152,13 +152,20 @@ void Cmov(uint32_t A, uint32_t B, uint32_t C, uint32_t r[])
 void Seg_load(uint32_t A, uint32_t B, uint32_t C,
               mem_struct mem, uint32_t r[])
 {
-        assert(A < NUM_REG);
-        assert(B < NUM_REG);
-        assert(C < NUM_REG);
-        assert(r != NULL);
-        assert(mem != NULL);
-        assert((uint32_t *) Seq_get(mem->mem_seq, r[B]) != NULL);
-        uint32_t *seg = (uint32_t *) Seq_get(mem->mem_seq, r[B]);
+        // assert(A < NUM_REG);
+        // assert(B < NUM_REG);
+        // assert(C < NUM_REG);
+        // assert(r != NULL);
+        // assert(mem != NULL);
+        uint32_t **memseq = mem->mem_seq;
+        if (r[B] == 0) {
+                // assert((memseq)[r[B] + 1] != NULL);
+                uint32_t *seg = (memseq)[1];
+                r[A] = seg[r[C] + 1];
+                return;
+        }
+        // assert((memseq)[r[B]] != NULL);
+        uint32_t *seg = (memseq)[r[B]];
         r[A] = seg[r[C] + 1];
 }
 
@@ -188,14 +195,21 @@ void Seg_load(uint32_t A, uint32_t B, uint32_t C,
 void Seg_store(uint32_t A, uint32_t B, uint32_t C,
                mem_struct mem, uint32_t r[])
 {
-        assert(A < NUM_REG);
-        assert(B < NUM_REG);
-        assert(C < NUM_REG);
-        assert(r != NULL);
-        assert(mem != NULL);
-        assert((uint32_t*) Seq_get(mem->mem_seq, r[A]) != NULL);
-        uint32_t *seg = (uint32_t *) Seq_get(mem->mem_seq, r[A]);
-        seg[r[B] + 1] = r[C];
+        // assert(A < NUM_REG);
+        // assert(B < NUM_REG);
+        // assert(C < NUM_REG);
+        // assert(r != NULL);
+        // assert(mem != NULL);
+        uint32_t **memseq = mem->mem_seq;
+        uint32_t *segA = memseq[r[A]];
+        if (r[A] == 0) {
+                // assert((memseq)[r[A] + 1] != NULL);
+                uint32_t *seg = (memseq)[1];
+                seg[r[B] + 1] = r[C];
+                return;
+        }
+        // assert(segA != NULL);
+        segA[r[B] + 1] = r[C];
 }
 
 /**********Add********************************************************
@@ -217,10 +231,10 @@ void Seg_store(uint32_t A, uint32_t B, uint32_t C,
  ****************************************************************************/
 void Add(uint32_t A, uint32_t B, uint32_t C, uint32_t r[])
 {
-        assert(A < NUM_REG);
-        assert(B < NUM_REG);
-        assert(C < NUM_REG);
-        assert(r != NULL);
+        // assert(A < NUM_REG);
+        // assert(B < NUM_REG);
+        // assert(C < NUM_REG);
+        // assert(r != NULL);
         r[A] = (r[B] + r[C]);
 }
 
@@ -243,10 +257,10 @@ void Add(uint32_t A, uint32_t B, uint32_t C, uint32_t r[])
  ****************************************************************************/
 void Mult(uint32_t A, uint32_t B, uint32_t C, uint32_t r[])
 {
-        assert(A < NUM_REG);
-        assert(B < NUM_REG);
-        assert(C < NUM_REG);
-        assert(r != NULL);
+        // assert(A < NUM_REG);
+        // assert(B < NUM_REG);
+        // assert(C < NUM_REG);
+        // assert(r != NULL);
         r[A] = (r[B] * r[C]);
 }
 
@@ -270,10 +284,10 @@ void Mult(uint32_t A, uint32_t B, uint32_t C, uint32_t r[])
  ****************************************************************************/
 void Div(uint32_t A, uint32_t B, uint32_t C, uint32_t r[])
 {
-        assert(A < NUM_REG);
-        assert(B < NUM_REG);
-        assert(C < NUM_REG);
-        assert(r != NULL);
+        // assert(A < NUM_REG);
+        // assert(B < NUM_REG);
+        // assert(C < NUM_REG);
+        // assert(r != NULL);
 
         r[A] = ((r[B] / r[C]));
 }
@@ -297,10 +311,10 @@ void Div(uint32_t A, uint32_t B, uint32_t C, uint32_t r[])
  ****************************************************************************/
  void Nand(uint32_t A, uint32_t B, uint32_t C, uint32_t r[])
  {
-        assert(A < NUM_REG);
-        assert(B < NUM_REG);
-        assert(C < NUM_REG);
-        assert(r != NULL);
+        // assert(A < NUM_REG);
+        // assert(B < NUM_REG);
+        // assert(C < NUM_REG);
+        // assert(r != NULL);
 
         r[A] = ~((r[B] & r[C]));
  }
@@ -320,16 +334,17 @@ void Div(uint32_t A, uint32_t B, uint32_t C, uint32_t r[])
  ****************************************************************************/
 void Halt(mem_struct mem) 
 {
-        assert(mem != NULL);
+        // assert(mem != NULL);
 
-        for (int seg = 0; seg < Seq_length(mem->mem_seq); seg++) {
-                uint32_t *curr_seg = (uint32_t *) Seq_get(mem->mem_seq, seg);
+        uint32_t num_segs = (mem->mem_seq[0][1]);
+        for (long seg = 0; seg < num_segs; seg++) {
+                uint32_t *curr_seg = (mem->mem_seq)[seg];
                 if (curr_seg != NULL) {
                         free(curr_seg);
                 }
         }
-        Seq_free(&(mem->mem_seq));
-        Seq_free(&(mem->unmapped));
+        free(mem->mem_seq);
+        free(mem->unmapped);
         free(mem);
         exit(0);
 }
@@ -357,24 +372,30 @@ void Halt(mem_struct mem)
  ****************************************************************************/
 void Map(uint32_t B, uint32_t C, mem_struct mem, uint32_t r[])
 {
-        assert(B < NUM_REG);
-        assert(C < NUM_REG);
-        assert(r != NULL);
-        assert(mem != NULL);
+        // assert(B < NUM_REG);
+        // assert(C < NUM_REG);
+        // assert(r != NULL);
+        // assert(mem != NULL);
         
         uint32_t *new_seg = calloc(((size_t) r[C]) + 1, sizeof(uint32_t));
-        new_seg[0] = r[C];
-        // for (unsigned i = 0; i < r[C]; i++) {
-        //         *(uint32_t *) UArray_at(new_seg, i) = 0;
-        // }
-        if (Seq_length(mem->unmapped) != 0) {
-                uint32_t unmapped_id = *(uint32_t *) Seq_remhi(mem->unmapped);
-                Seq_put(mem->mem_seq, unmapped_id, new_seg);
+        new_seg[0] = r[C] + 1;
+        uint32_t unmapped_size = mem->unmapped[0];
+        // fprintf(stderr, "size ID: %d\n", unmapped_size);
+        if (unmapped_size != 0) {
+                uint32_t unmapped_id = mem->unmapped[unmapped_size];
+                // for (unsigned i = 0; i < unmapped_size; i++) {
+                //         fprintf(stderr, "ID: %d\n", mem->unmapped[i]);
+                // }
+                
+                (mem->mem_seq)[unmapped_id] = new_seg;
                 r[B] = unmapped_id;
+                mem->unmapped[0]--;
         } else {
-                uint32_t seg_id = Seq_length(mem->mem_seq);
-                Seq_addhi(mem->mem_seq, new_seg);
+                uint32_t *meta = mem->mem_seq[0];
+                uint32_t seg_id = meta[1];
+                (mem->mem_seq)[seg_id] = new_seg;
                 r[B] = seg_id;
+                meta[1] = seg_id + 1;
         }
 }
 
@@ -399,20 +420,20 @@ void Map(uint32_t B, uint32_t C, mem_struct mem, uint32_t r[])
  ****************************************************************************/
 void Unmap(uint32_t C, mem_struct mem, uint32_t r[])
 {
-        assert(C < NUM_REG);
-        assert(r != NULL);
-        assert(mem != NULL);
+
+        // assert(C < NUM_REG);
+        // assert(r != NULL);
+        // assert(mem != NULL);
 
         /* free segment being unmapped */
-        uint32_t *seg = (uint32_t *) Seq_get(mem->mem_seq, r[C]);
+        uint32_t *seg = (mem->mem_seq)[r[C]];
         free(seg);
 
         /* set pointer in mem_struct to NULL and add id to unmapped sequence */
-        Seq_put(mem->mem_seq, r[C], NULL);
-        uint32_t *unmapped_id = malloc(sizeof(uint32_t));
-        assert(unmapped_id != NULL);
-        *unmapped_id = r[C];
-        Seq_addhi(mem->unmapped, unmapped_id);
+        mem->mem_seq[r[C]] = NULL;
+        mem->unmapped[mem->unmapped[0] + 1] = r[C];
+        mem->unmapped[0]++;
+        // fprintf(stderr, "idx: %d, val: %u\n", mem->unmapped[0], mem->unmapped[mem->unmapped[0]]);
 }
 
 /**********Output********************************************************
@@ -433,9 +454,9 @@ void Unmap(uint32_t C, mem_struct mem, uint32_t r[])
  ****************************************************************************/
 void Output(uint32_t C, uint32_t r[])
 {
-        assert(C < NUM_REG);
-        assert(r != NULL);
-        assert(r[C] <= MAX_CHAR);
+        // assert(C < NUM_REG);
+        // assert(r != NULL);
+        // assert(r[C] <= MAX_CHAR);
 
         /* if r[C] is all 1's, do not print */
         if (r[C] == (uint32_t) ~0) {
@@ -462,8 +483,8 @@ void Output(uint32_t C, uint32_t r[])
  ****************************************************************************/
 void Input(uint32_t C, uint32_t r[])
 {
-        assert(C < NUM_REG);
-        assert(r != NULL);
+        // assert(C < NUM_REG);
+        // assert(r != NULL);
 
         int val = getc(stdin);
 
@@ -508,12 +529,12 @@ void Input(uint32_t C, uint32_t r[])
 void Load_prog(uint32_t B, uint32_t C, mem_struct mem, uint32_t r[],
                uint32_t *prog_counter)
 {
-        assert(B < NUM_REG);
-        assert(C < NUM_REG);
-        assert(mem != NULL);
-        assert(r != NULL);
-        assert(prog_counter != NULL);
-        assert((uint32_t *) Seq_get(mem->mem_seq, r[B]) != NULL);
+        // assert(B < NUM_REG);
+        // assert(C < NUM_REG);
+        // assert(mem != NULL);
+        // assert(r != NULL);
+        // assert(prog_counter != NULL);
+        // assert((mem->mem_seq)[r[B]] != NULL);
 
         *prog_counter = r[C];
         
@@ -525,13 +546,13 @@ void Load_prog(uint32_t B, uint32_t C, mem_struct mem, uint32_t r[],
         /* otherwise, copy segment from r[B] into mem[0] and free the 
          * previous contents of m[0]
          */
-        uint32_t *old_prog = (uint32_t *) Seq_get(mem->mem_seq, 0);
-        uint32_t *prog_seg = (uint32_t *) Seq_get(mem->mem_seq, r[B]);
+        uint32_t *old_prog = (mem->mem_seq)[1];
+        uint32_t *prog_seg = (mem->mem_seq)[r[B]];
         size_t prog_bytes = (prog_seg[0] + 1) * 4;
         uint32_t *prog_copy = malloc(prog_bytes);
         memcpy(prog_copy, prog_seg, prog_bytes);
         free(old_prog);
-        Seq_put(mem->mem_seq, 0, prog_copy);
+        mem->mem_seq[1] = prog_copy;
 }
 
 /**********Load_val********************************************************
@@ -552,8 +573,8 @@ void Load_prog(uint32_t B, uint32_t C, mem_struct mem, uint32_t r[],
  ****************************************************************************/
 void Load_val(uint32_t A, uint32_t val, uint32_t r[])
 {
-        assert(A < NUM_REG);
-        assert(r != NULL);
+        // assert(A < NUM_REG);
+        // assert(r != NULL);
 
         r[A] = val;
         return;

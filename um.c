@@ -32,12 +32,14 @@
 #define INITIAL_MAPPED_SIZE 0
 #define INITIAL_UNMAPPED_SIZE 0
 #define BYTES_PER_WORD 4
+#define SPINE_SIZE 4294967295
+// #define SPINE_SIZE 100
+
 
 /**************************function declarations******************************/
 FILE *open_file(char *filename, char *mode);
 void populate_program(mem_struct mem, FILE *um_fp, long num_words);
 long get_file_words(char *filename);
-unsigned get_m0_size(Seq_T mem_seq);
 
 int main(int argc, char*argv[])
 {
@@ -54,27 +56,33 @@ int main(int argc, char*argv[])
         /* initialize registers and program counter */
         uint32_t registers[NUM_REG] = {0};
         unsigned *prog_counter = malloc(sizeof(*prog_counter));
-        assert(prog_counter != NULL);
+        // assert(prog_counter != NULL);
         *prog_counter = 0;
         
         /* initialize virtual memory mem_struct */
         mem_struct mem = malloc(sizeof(*mem));
-        assert(mem != NULL);
-        Seq_T mem_seq = Seq_new(INITIAL_MEM_SIZE);
-        Seq_T unmapped = Seq_new(INITIAL_UNMAPPED_SIZE);
+        // assert(mem != NULL);
+        uint32_t **mem_seq = malloc(SPINE_SIZE);
+        uint32_t *metadata = malloc(2 * sizeof(uint32_t));
+        metadata[0] = SPINE_SIZE;
+        metadata[1] = 2;
+        mem_seq[0] = metadata;
+
+        // assert(mem_seq != NULL);
+        // assert(metadata != NULL);
+        uint32_t *unmapped = malloc(SPINE_SIZE);
+        unmapped[0] = 0;
         mem->mem_seq  = mem_seq;
         mem->unmapped = unmapped;
 
         /* populate mem[0] with instructions from file */
         populate_program(mem, um_fp, num_words);
-        // CPUTime_Start(timer);
+        fclose(um_fp);
+
         /* iterate through m[0], decode and execute each instruction */
         // fprintf(stderr, "m_0 size: %u\n", ((uint32_t *)Seq_get(mem->mem_seq, 0))[0]);
-        while (*prog_counter < ((uint32_t *)Seq_get(mem->mem_seq, 0))[0]) {
-                uint32_t *seg_0 = (uint32_t *) Seq_get(mem->mem_seq, 0);
-                // for (int i = 0; i < num_words; i++) {
-                //         fprintf(stderr, "%u\n",( (uint32_t *)Seq_get(mem->mem_seq, 0))[i]);
-                // }
+        while (*prog_counter < ((mem->mem_seq)[0][0])) {
+                uint32_t *seg_0 = (mem->mem_seq)[1];
                 uint32_t inst = seg_0[*prog_counter + 1];
                 if (inst >> 28 == 13) {
                         // fprintf(stderr, "loadingval at loop: %d\n", *prog_counter);
@@ -93,8 +101,12 @@ int main(int argc, char*argv[])
                         uint32_t OP = inst_3R.OP;
                         if (OP != 13) {
                                 (*prog_counter)++;
+                        }                             
+
+                        if (OP == 7) {
+                                free(prog_counter);
+
                         }
-                        // fprintf(stderr, "executing at loop: %d\n", *prog_counter);
                         execute(A, B, C, OP, mem, registers, prog_counter);
                 }
         }
@@ -117,8 +129,8 @@ int main(int argc, char*argv[])
  ************************/
 FILE *open_file(char *filename, char *mode)
 {
-        assert(filename != NULL);
-        assert(mode != NULL);
+        // assert(filename != NULL);
+        // assert(mode != NULL);
 
         FILE *fp = fopen(filename, mode); 
         if (fp == NULL) {
@@ -151,17 +163,17 @@ FILE *open_file(char *filename, char *mode)
  ************************/
 void populate_program(mem_struct mem, FILE *um_fp, long num_words)
 {
-        assert(mem != NULL);
-        assert(um_fp != NULL);
+        // assert(mem != NULL);
+        // assert(um_fp != NULL);
         
         int curr_byte = fgetc(um_fp);
         // ptr = (cast-type*)calloc(n, element-size);
         uint32_t *m_0 = malloc((num_words + 1) * sizeof(uint32_t));
         m_0[0] = num_words;
-        assert(m_0 != NULL);
+        // assert(m_0 != NULL);
         int word_idx = 0;
         while (curr_byte != EOF) {
-                uint32_t curr_word = 0;             
+                uint32_t curr_word = 0;
                 for (int i = 0; i < BYTES_PER_WORD; i++) {
                         curr_word = Bitpack_newu(curr_word, BYTE_W,
                                                  WORD_SZ - (i + 1) * BYTE_W,
@@ -171,7 +183,8 @@ void populate_program(mem_struct mem, FILE *um_fp, long num_words)
                 m_0[word_idx + 1] = curr_word;
                 word_idx++;
         }
-        Seq_addhi(mem->mem_seq, m_0);
+        // assert(mem->mem_seq != NULL);
+        mem->mem_seq[1] = m_0;
         return;
 }
 
@@ -189,7 +202,7 @@ void populate_program(mem_struct mem, FILE *um_fp, long num_words)
  ************************/
 long get_file_words(char *filename)
 {
-        assert(filename != NULL);
+        // assert(filename != NULL);
         struct stat file_stats;
         assert(stat(filename, &file_stats) == 0);
         return (file_stats.st_size / BYTES_PER_WORD);

@@ -43,8 +43,8 @@ typedef struct load_val_instruction {
 } inst_loadval_t;
 
 typedef struct memory {
-        Seq_T mem_seq;
-        Seq_T unmapped;
+        uint32_t **mem_seq;
+        uint32_t  *unmapped;
 } *mem_struct;
 
 
@@ -63,4 +63,5 @@ typedef struct memory {
 #define BYTE_W 8
 #define MAX_CHAR 255
 #define NUM_REG 8
+#define MAX_SIZE 9223372036854775807
 #endif
