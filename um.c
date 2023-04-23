@@ -19,10 +19,8 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "execute_inst.h"
-#include "decode_inst.h"
 #include "structs_and_constants.h"
 #include "uarray.h"
-#include "bitpack.h"
 #include "sys/stat.h"
 
 /******************************global macros*********************************/
@@ -163,9 +161,7 @@ void populate_program(uint32_t **mem_seq, FILE *um_fp, long num_words)
         while (curr_byte != EOF) {
                 uint32_t curr_word = 0;
                 for (int i = 0; i < BYTES_PER_WORD; i++) {
-                        curr_word = Bitpack_newu(curr_word, BYTE_W,
-                                                 WORD_SZ - (i + 1) * BYTE_W,
-                                                 curr_byte);
+                        curr_word = curr_word | (curr_byte << (24 - 8 * i));
                         curr_byte = fgetc(um_fp);
                 }
                 m_0[word_idx + 1] = curr_word;
@@ -175,18 +171,6 @@ void populate_program(uint32_t **mem_seq, FILE *um_fp, long num_words)
         return;
 }
 
-/**********get_file_words********
- *
- * Purpose: Calculates the number of 32-bit instructions/words in a given file  
- * Parameters:
- *      char *filename: name of file with 32-bit instructions
- * Returns: Number of 32-bit words in file
- * Expects:
- *      filename to be non-NULL
- * Notes:
- *      Will CRE if given filename is NULL
- *      Uses stat() to retrieve number of words in file
- ************************/
 long get_file_words(char *filename)
 {
         // assert(filename != NULL);

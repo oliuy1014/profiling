@@ -53,7 +53,7 @@ all: um
 
 ## Linking step (.o -> executable program)
 
-um: um.o bitpack.o execute_inst.o decode_inst.o
+um: um.o execute_inst.o
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 clean:
