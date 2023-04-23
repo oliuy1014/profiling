@@ -30,30 +30,28 @@
 #define INITIAL_UNMAPPED_SIZE 0
 #define BYTES_PER_WORD 4
 #define SPINE_SIZE 4294967295
-// #define SPINE_SIZE 100
-
 
 /**************************function declarations******************************/
-FILE *open_file(char *filename, char *mode);
-void populate_program(uint32_t **mem_seq, FILE *um_fp, long num_words);
-long get_file_words(char *filename);
-
 int main(int argc, char*argv[])
 {
-        // CPUTime_T timer = CPUTime_New();
         if (argc != 2) {
                 printf("Usage: ./um filename.um\n");
                 exit(1);
         }
 
         /* open input file and get number of 32-bit words */
-        FILE *um_fp = open_file(argv[1], "r");
-        long num_words = get_file_words(argv[1]);
+        FILE *um_fp = fopen(argv[1], "r"); 
+        if (um_fp == NULL) {
+                fprintf(stderr, "Could not open file %s\n", argv[1]);
+                exit(1);
+        }
+        struct stat file_stats;
+        assert(stat(argv[1], &file_stats) == 0);
+        long num_words = (file_stats.st_size / BYTES_PER_WORD);
 
         /* initialize registers and program counter */
-        uint32_t registers[NUM_REG] = {0};
+        uint32_t r[NUM_REG] = {0};
         unsigned *prog_counter = malloc(sizeof(*prog_counter));
-        // assert(prog_counter != NULL);
         *prog_counter = 0;
         
         /* initialize virtual memory mem_struct */
@@ -63,24 +61,31 @@ int main(int argc, char*argv[])
         metadata[1] = 2;
         mem_seq[0] = metadata;
 
-        // assert(mem_seq != NULL);
-        // assert(metadata != NULL);
         uint32_t *unmapped = malloc(SPINE_SIZE);
         unmapped[0] = 0;
-
-        /* populate mem[0] with instructions from file */
-        populate_program(mem_seq, um_fp, num_words);
+        int curr_byte = fgetc(um_fp);
+        uint32_t *m_0 = malloc((num_words + 1) * sizeof(uint32_t));
+        m_0[0] = num_words;
+        int word_idx = 0;
+        while (curr_byte != EOF) {
+                uint32_t curr_word = 0;
+                for (int i = 0; i < BYTES_PER_WORD; i++) {
+                        curr_word = curr_word | (curr_byte << (24 - 8 * i));
+                        curr_byte = fgetc(um_fp);
+                }
+                m_0[word_idx + 1] = curr_word;
+                word_idx++;
+        }
+        mem_seq[1] = m_0;
         fclose(um_fp);
 
-        /* iterate through m[0], decode and execute each instruction */
-        // fprintf(stderr, "m_0 size: %u\n", ((uint32_t *)Seq_get(mem->mem_seq, 0))[0]);
         while (*prog_counter < ((mem_seq)[0][0])) {
                 uint32_t *seg_0 = (mem_seq)[1];
                 uint32_t inst = seg_0[*prog_counter + 1];
                 if (inst >> 28 == 13) {
                         uint32_t reg_idx = (inst << 4) >> 29;
                         uint32_t val = (inst << 7) >> 7;
-                        registers[reg_idx] = val;
+                        r[reg_idx] = val;
                         (*prog_counter)++;
                 } else {
                         uint32_t OP = inst >> 28;
@@ -96,85 +101,152 @@ int main(int argc, char*argv[])
                         if (OP == 7) {
                                 free(prog_counter);
                         }
-                        execute(A, B, C, OP, mem_seq, unmapped, registers, prog_counter);
+                        switch (OP) {
+                                case 0: 
+                                {
+                                        if (r[C] != 0) {
+                                                r[A] = r[B];
+                                        }
+                                        break;
+                                }
+                                case 1:
+                                {
+                                        if (r[B] == 0) {
+                                                uint32_t *seg = (mem_seq)[1];
+                                                r[A] = seg[r[C] + 1];
+                                                break;
+                                        }
+                                        uint32_t *seg = (mem_seq)[r[B]];
+                                        r[A] = seg[r[C] + 1];
+                                        break;
+                                }
+                                case 2:
+                                {
+                                        uint32_t *segA = mem_seq[r[A]];
+                                        if (r[A] == 0) {
+                                                uint32_t *seg = (mem_seq)[1];
+                                                seg[r[B] + 1] = r[C];
+                                                break;
+                                        }
+                                        segA[r[B] + 1] = r[C];
+                                        break;
+                                }
+                                case 3:
+                                {
+                                        r[A] = (r[B] + r[C]);
+                                        break;
+                                }
+                                case 4:
+                                {
+                                        r[A] = (r[B] * r[C]);
+                                        break;
+                                }
+                                case 5:
+                                {
+                                        r[A] = (r[B] / r[C]);
+                                        break;
+                                }
+                                case 6:
+                                {
+                                        r[A] = ~(r[B] & r[C]);
+                                        break;
+                                }
+                                case 7:
+                                {
+                                        uint32_t num_segs = (mem_seq[0][1]);
+                                        for (long seg = 0; seg < num_segs; seg++) {
+                                                uint32_t *curr_seg = (mem_seq)[seg];
+                                                if (curr_seg != NULL) {
+                                                        free(curr_seg);
+                                                }
+                                        }
+                                        free(mem_seq);
+                                        free(unmapped);
+                                        exit(0);
+                                        break;
+                                }
+                                case 8:
+                                {
+                                        uint32_t *new_seg = calloc(((size_t) r[C]) + 1, sizeof(uint32_t));
+                                        new_seg[0] = r[C] + 1;
+                                        uint32_t unmapped_size = unmapped[0];
+                                        if (unmapped_size != 0) {
+                                                uint32_t unmapped_id = unmapped[unmapped_size];
+                                                (mem_seq)[unmapped_id] = new_seg;
+                                                r[B] = unmapped_id;
+                                                unmapped[0]--;
+                                        } else {
+                                                uint32_t *meta = mem_seq[0];
+                                                uint32_t seg_id = meta[1];
+                                                (mem_seq)[seg_id] = new_seg;
+                                                r[B] = seg_id;
+                                                meta[1] = seg_id + 1;
+                                        }
+                                        break;
+                                }
+                                case 9:
+                                {
+                                        /* free segment being unmapped */
+                                        uint32_t *seg = (mem_seq)[r[C]];
+                                        free(seg);
+
+                                        /* set pointer in mem_struct to NULL and add id to unmapped sequence */
+                                        mem_seq[r[C]] = NULL;
+                                        unmapped[unmapped[0] + 1] = r[C];
+                                        unmapped[0]++;
+                                        break;
+                                }
+                                case 10:
+                                {
+                                        if (r[C] == (uint32_t) ~0) {
+                                                break;
+                                        }
+                                        /* otherwise, print char of value at r[C] */
+                                        putc(r[C], stdout);
+                                        break;
+                                }
+                                case 11:
+                                {
+                                        int val = getc(stdin);
+
+                                        /* if input reaches EOF, fill r[C] with all 1's, otherwise just
+                                        * put int value of input char in r[C]
+                                        */
+                                        if (val != EOF) {
+                                                r[C] = (uint32_t) val;
+                                        } else {
+                                                r[C] = (uint32_t) ~0;
+                                        }
+                                        break;
+                                }
+                                case 12:
+                                {
+                                        *prog_counter = r[C];
+                        
+                                        /* if loading progr[a]m from mem[0] just return */
+                                        if (r[B] == 0) {
+                                                break;
+                                        }
+                                        
+                                        /* otherwise, copy segment from r[B] into mem[0] and free the 
+                                        * previous contents of m[0]
+                                        */
+                                        uint32_t *old_prog = (mem_seq)[1];
+                                        uint32_t *prog_seg = (mem_seq)[r[B]];
+                                        size_t prog_bytes = (prog_seg[0] + 1) * 4;
+                                        uint32_t *prog_copy = malloc(prog_bytes);
+                                        unsigned l = prog_seg[0];
+                                        for (unsigned i = 0; i < l; i++) {
+                                                prog_copy[i] = prog_seg[i];
+                                        }
+                                        free(old_prog);
+                                        mem_seq[1] = prog_copy;
+                                        break;
+                                }
+                                default:
+                                        {break;}
+                        }
                 }
-        }
+                }
         return 0;
-}
-
-/**********open_file********
- *
- * Purpose: opens a file for reading. 
- * Parameters:
- *      char *filename: name of file to be opened
- *      char *mode: mode to open (read/write)
- * Returns: file pointer for reading
- * Expects:
- *      filename and mode are non-NULL.
- * Notes:
- *      Will CRE if any of filename, mode, or created file pointer are NULL.
- *      Main closes the file pointer with fclose.
- ************************/
-FILE *open_file(char *filename, char *mode)
-{
-        // assert(filename != NULL);
-        // assert(mode != NULL);
-
-        FILE *fp = fopen(filename, mode); 
-        if (fp == NULL) {
-                fprintf(stderr, "Could not open file %s\n", filename);
-                exit(1);
-        } else {
-                return fp;
-        }
-}
-
-/**********populate_program********
- *
- * Function that sets up the initial state of our memory. Creates a 
- * UArray of size equal to the number of 32-bit instructions provided 
- * by the input .um file and stores it in segment 0 of our sequence in
- * memory. Populates the UArray so that each element holds a 32-bit word,
- * and initializes each word to 0.  
- * Parameters:
- *      mem_struct mem: struct that stores the memory sequence to be accessed
- *      File *um_fp: pointer to input um file
- *      long num_words: number of 32-bit words in the input um file
- * Returns: None
- * Expects:
- *      mem and um_fp to be non-NULL
- * Notes:
- *      Will CRE if:
- *      - any of mem or um_fp are NULL
- *      - memory cannot be allocated for m[0]
- *      Will raise Bitpack_Overflow if curr_word does not fit in 8 bytes 
- ************************/
-void populate_program(uint32_t **mem_seq, FILE *um_fp, long num_words)
-{
-        // assert(mem != NULL);
-        // assert(um_fp != NULL);
-        
-        int curr_byte = fgetc(um_fp);
-        uint32_t *m_0 = malloc((num_words + 1) * sizeof(uint32_t));
-        m_0[0] = num_words;
-        int word_idx = 0;
-        while (curr_byte != EOF) {
-                uint32_t curr_word = 0;
-                for (int i = 0; i < BYTES_PER_WORD; i++) {
-                        curr_word = curr_word | (curr_byte << (24 - 8 * i));
-                        curr_byte = fgetc(um_fp);
-                }
-                m_0[word_idx + 1] = curr_word;
-                word_idx++;
-        }
-        mem_seq[1] = m_0;
-        return;
-}
-
-long get_file_words(char *filename)
-{
-        // assert(filename != NULL);
-        struct stat file_stats;
-        assert(stat(filename, &file_stats) == 0);
-        return (file_stats.st_size / BYTES_PER_WORD);
 }
