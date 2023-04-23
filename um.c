@@ -24,7 +24,6 @@
 #include "uarray.h"
 #include "bitpack.h"
 #include "sys/stat.h"
-#include "cputiming.h"
 
 /******************************global macros*********************************/
 #define NUM_REG 8
@@ -38,7 +37,7 @@
 
 /**************************function declarations******************************/
 FILE *open_file(char *filename, char *mode);
-void populate_program(mem_struct mem, FILE *um_fp, long num_words);
+void populate_program(uint32_t **mem_seq, FILE *um_fp, long num_words);
 long get_file_words(char *filename);
 
 int main(int argc, char*argv[])
@@ -60,8 +59,6 @@ int main(int argc, char*argv[])
         *prog_counter = 0;
         
         /* initialize virtual memory mem_struct */
-        mem_struct mem = malloc(sizeof(*mem));
-        // assert(mem != NULL);
         uint32_t **mem_seq = malloc(SPINE_SIZE);
         uint32_t *metadata = malloc(2 * sizeof(uint32_t));
         metadata[0] = SPINE_SIZE;
@@ -72,45 +69,38 @@ int main(int argc, char*argv[])
         // assert(metadata != NULL);
         uint32_t *unmapped = malloc(SPINE_SIZE);
         unmapped[0] = 0;
-        mem->mem_seq  = mem_seq;
-        mem->unmapped = unmapped;
 
         /* populate mem[0] with instructions from file */
-        populate_program(mem, um_fp, num_words);
+        populate_program(mem_seq, um_fp, num_words);
         fclose(um_fp);
 
         /* iterate through m[0], decode and execute each instruction */
         // fprintf(stderr, "m_0 size: %u\n", ((uint32_t *)Seq_get(mem->mem_seq, 0))[0]);
-        while (*prog_counter < ((mem->mem_seq)[0][0])) {
-                uint32_t *seg_0 = (mem->mem_seq)[1];
+        while (*prog_counter < ((mem_seq)[0][0])) {
+                uint32_t *seg_0 = (mem_seq)[1];
                 uint32_t inst = seg_0[*prog_counter + 1];
                 if (inst >> 28 == 13) {
-                        // fprintf(stderr, "loadingval at loop: %d\n", *prog_counter);
-                        inst_loadval_t inst_LV = decode_loadval_inst(inst);
-                        uint32_t reg_idx = inst_LV.A;
-                        uint32_t val = inst_LV.val;
-                        // fprintf(stderr, "reg_idx: %d val: %d\n", reg_idx, val);
+                        uint32_t reg_idx = (inst << 4) >> 29;
+                        uint32_t val = (inst << 7) >> 7;
                         registers[reg_idx] = val;
                         (*prog_counter)++;
                 } else {
-                        // fprintf(stderr, "3reg at loop: %d\n", *prog_counter);
-                        inst_3reg_t inst_3R = decode_3reg_inst(inst);
-                        uint32_t A  = inst_3R.A;
-                        uint32_t B  = inst_3R.B;
-                        uint32_t C  = inst_3R.C;
-                        uint32_t OP = inst_3R.OP;
+                        uint32_t OP = inst >> 28;
+                        uint32_t abc = (inst << 23) >> 23;
+                        uint32_t A = abc >> 6;
+                        uint32_t lose_A = (A << 6);
+                        uint32_t B = (abc - lose_A) >> 3;
+                        uint32_t lose_B = B << 3;
+                        uint32_t C = abc - lose_A - lose_B;
                         if (OP != 13) {
                                 (*prog_counter)++;
                         }                             
-
                         if (OP == 7) {
                                 free(prog_counter);
-
                         }
-                        execute(A, B, C, OP, mem, registers, prog_counter);
+                        execute(A, B, C, OP, mem_seq, unmapped, registers, prog_counter);
                 }
         }
-        // double time_used = CPUTime_Stop(timer);
         return 0;
 }
 
@@ -161,16 +151,14 @@ FILE *open_file(char *filename, char *mode)
  *      - memory cannot be allocated for m[0]
  *      Will raise Bitpack_Overflow if curr_word does not fit in 8 bytes 
  ************************/
-void populate_program(mem_struct mem, FILE *um_fp, long num_words)
+void populate_program(uint32_t **mem_seq, FILE *um_fp, long num_words)
 {
         // assert(mem != NULL);
         // assert(um_fp != NULL);
         
         int curr_byte = fgetc(um_fp);
-        // ptr = (cast-type*)calloc(n, element-size);
         uint32_t *m_0 = malloc((num_words + 1) * sizeof(uint32_t));
         m_0[0] = num_words;
-        // assert(m_0 != NULL);
         int word_idx = 0;
         while (curr_byte != EOF) {
                 uint32_t curr_word = 0;
@@ -183,8 +171,7 @@ void populate_program(mem_struct mem, FILE *um_fp, long num_words)
                 m_0[word_idx + 1] = curr_word;
                 word_idx++;
         }
-        // assert(mem->mem_seq != NULL);
-        mem->mem_seq[1] = m_0;
+        mem_seq[1] = m_0;
         return;
 }
 
